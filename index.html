@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sõnaõpe: eesti → inglise</title>
+  <meta name="theme-color" content="#ffffff" />
+  <style>
+    :root {
+      --bg: #f7f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --accent: #2563eb;
+      --ok: #16a34a;
+      --bad: #dc2626;
+      --border: #e5e7eb;
+      --shadow: 0 6px 24px rgba(0,0,0,.06);
+      --radius: 16px;
+    }
+    * { box-sizing: border-box }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Noto Sans, "Apple Color Emoji", "Segoe UI Emoji";
+      background: var(--bg);
+      color: var(--text);
+    }
+    .wrap { max-width: 920px; margin: 24px auto; padding: 16px }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px }
+    h1 { font-size: 22px; margin: 0 }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow) }
+    .grid { display: grid; gap: 16px }
+    @media (min-width: 960px){ .grid { grid-template-columns: 1.2fr .8fr } }
+    .section { padding: 16px 16px }
+    .section + .section { border-top: 1px solid var(--border) }
+    label { display: inline-block; font-size: 14px; color: var(--muted); margin-bottom: 6px }
+    textarea, input[type="text"], input[type="number"] {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 16px;
+      background: #fff;
+    }
+    textarea { min-height: 180px; resize: vertical }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center }
+    button {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--text);
+      padding: 10px 14px;
+      font-size: 15px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: transform .02s ease-in-out, background .2s, border .2s;
+    }
+    button.primary { background: var(--accent); color: #fff; border-color: var(--accent) }
+    button:active { transform: translateY(1px) }
+    .pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 10px; background: #fff; border: 1px solid var(--border); border-radius: 999px; font-size: 13px }
+    .muted { color: var(--muted) }
+    .quiz-word { font-size: 28px; font-weight: 700; letter-spacing: .3px }
+    .feedback { font-size: 15px; margin-top: 6px }
+    .ok { color: var(--ok) }
+    .bad { color: var(--bad) }
+    .spacer { height: 4px }
+    .hint { font-size: 13px; color: var(--muted) }
+    .badge { font-size: 12px; color: var(--muted); padding: 3px 8px; border:1px solid var(--border); border-radius: 999px }
+    .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; padding: 2px 6px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; background: #fff }
+    .footer { text-align: center; font-size: 12px; color: var(--muted); padding: 14px }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>eesti → inglise sõnaõpe</h1>
+      <div class="row">
+        <span class="pill" title="salvestab brauseri mällu">andmed: <strong id="statCount">0</strong> sõna</span>
+        <button id="exportBtn" title="lae alla varukoopia">ekspordi</button>
+        <label for="importFile" class="pill" style="cursor:pointer" title="lae üles varukoopia">impordi JSON<input id="importFile" type="file" accept="application/json" style="display:none" /></label>
+      </div>
+    </header>
+
+    <div class="grid">
+      <!-- Õppemäng / viktoriin -->
+      <section class="card section">
+        <div class="row" style="justify-content: space-between">
+          <div class="row" style="gap:8px">
+            <span class="badge" id="modeBadge">režiim: eesti → inglise</span>
+            <span class="badge" id="score">tulemus 0 / 0</span>
+          </div>
+          <div class="row">
+            <button id="shuffleBtn">sega järjekord</button>
+            <button id="resetBtn">alusta uuesti</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <div id="quizWord" class="quiz-word">alusta allpool</div>
+          <div class="spacer"></div>
+          <label for="answer">sisesta ingliskeelne vastus</label>
+          <input id="answer" type="text" placeholder="kirjuta vastus ja vajuta enter" autocomplete="off" />
+          <div class="row" style="margin-top:10px; gap:8px">
+            <button id="checkBtn" class="primary">kontrolli</button>
+            <button id="nextBtn">järgmine</button>
+            <button id="speakBtn" title="loeb inglise sõna" disabled>kuula hääldust</button>
+          </div>
+          <div id="feedback" class="feedback muted"></div>
+          <div class="hint">vihje: vajuta <span class="kbd">enter</span> et kontrollida ja <span class="kbd">ctrl</span>+<span class="kbd">enter</span> et võtta järgmine</div>
+        </div>
+      </section>
+
+      <!-- Sõnapaaride haldus -->
+      <section class="card section">
+        <h2 style="margin:0 0 10px 0; font-size:18px">sõnapaarid</h2>
+        <label for="pairs">üks rida korraga: <code>eesti, english</code>. lubatud on mitu inglise varianti 
+          <code>eesti, variant1 / variant2</code></label>
+        <textarea id="pairs" placeholder="õun, apple\nvesi, water\nvinge, cool / awesome"></textarea>
+        <div class="row" style="margin-top:10px">
+          <button id="saveBtn" class="primary">salvesta</button>
+          <button id="appendBtn">lisa juurde</button>
+          <button id="clearBtn">tühjenda kõik</button>
+        </div>
+        <p class="hint" style="margin-top:8px">andmed salvestuvad sinu brauserisse. serverit ei ole vaja</p>
+      </section>
+    </div>
+
+    <div class="footer">Web Speech API hääldus töötab brauseri toel. kui inglise häält ei leita räägib süsteemi vaikimisi hääl</div>
+  </div>
+
+  <script>
+    // —— väike util ————————————————————————————————
+    const storageKey = 'sonaoppe-pairs-v1';
+    const progressKey = 'sonaoppe-progress-v1';
+
+    function parsePairs(text){
+      return text
+        .split(/\n+/)
+        .map(l => l.trim())
+        .filter(Boolean)
+        .map(line => {
+          // oodatud: eesti, english1 / english2
+          const [eeRaw, enRaw] = line.split(',').map(s => (s||'').trim());
+          if(!eeRaw || !enRaw) return null;
+          const variants = enRaw
+            .split(/[\/|;]/)
+            .map(s => s.trim())
+            .filter(Boolean);
+          return { ee: eeRaw, en: variants };
+        })
+        .filter(Boolean);
+    }
+
+    function loadPairs(){
+      try { return JSON.parse(localStorage.getItem(storageKey)) || [] } catch { return [] }
+    }
+    function savePairs(arr){ localStorage.setItem(storageKey, JSON.stringify(arr)); updateStats() }
+
+    function updateStats(){
+      const n = loadPairs().length;
+      document.getElementById('statCount').textContent = n;
+    }
+
+    // —— hääldus (TTS) ————————————————————————————————
+    let voices = [];
+    function loadVoices(){ voices = window.speechSynthesis.getVoices() }
+    if('speechSynthesis' in window){
+      loadVoices();
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+    function speak(text){
+      if(!('speechSynthesis' in window)){
+        alert('sinu brauser ei toeta hääldust');
+        return;
+      }
+      const u = new SpeechSynthesisUtterance(text);
+      // eelistame ingliskeelset häält
+      const en = voices.find(v => v.lang && v.lang.toLowerCase().startsWith('en'))
+              || voices.find(v => v.lang && v.lang.toLowerCase().includes('en'))
+              || null;
+      if(en) u.voice = en;
+      u.lang = (en && en.lang) || 'en-US';
+      u.rate = 1; u.pitch = 1; u.volume = 1;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+    }
+
+    // —— viktoriin ————————————————————————————————
+    let deck = []; // [{ee, en:[...]}, ...]
+    let order = []; // indeksite järjekord
+    let idx = -1;
+    let correct = 0, total = 0;
+
+    function normalize(s){
+      return (s||'')
+        .toLowerCase()
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g,'')
+        .replace(/\s+/g,' ')
+        .trim();
+    }
+
+    function setFeedback(msg, ok){
+      const fb = document.getElementById('feedback');
+      fb.textContent = msg;
+      fb.className = 'feedback ' + (ok===true ? 'ok' : ok===false ? 'bad' : 'muted');
+    }
+
+    function updateScore(){
+      document.getElementById('score').textContent = `tulemus ${correct} / ${total}`;
+    }
+
+    function shuffle(arr){
+      for(let i=arr.length-1;i>0;i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function startQuiz(){
+      deck = loadPairs();
+      order = deck.map((_,i)=>i);
+      shuffle(order);
+      idx = -1;
+      correct = 0; total = 0;
+      updateScore();
+      nextCard();
+    }
+
+    function nextCard(){
+      if(order.length === 0){
+        document.getElementById('quizWord').textContent = 'lisa paremale sõnapaarid siis alusta uuesti';
+        document.getElementById('speakBtn').disabled = true;
+        setFeedback('', null);
+        return;
+      }
+      idx = (idx + 1) % order.length;
+      const card = deck[ order[idx] ];
+      document.getElementById('quizWord').textContent = card ? card.ee : '—';
+      document.getElementById('answer').value = '';
+      document.getElementById('answer').focus();
+      document.getElementById('speakBtn').disabled = true;
+      setFeedback('sisesta vastus', null);
+    }
+
+    function checkAnswer(){
+      const a = normalize(document.getElementById('answer').value);
+      const card = deck[ order[idx] ];
+      if(!card){ setFeedback('sõnu ei ole', false); return }
+      const ok = card.en.some(v => normalize(v) === a);
+      total++;
+      if(ok) correct++;
+      updateScore();
+      if(ok){
+        setFeedback('õige', true);
+      } else {
+        setFeedback(`vale. õige: ${card.en.join(' / ')}`, false);
+      }
+      document.getElementById('speakBtn').disabled = false;
+    }
+
+    // —— andmete haldus UI ————————————————————————————————
+    function loadTextareaFromStorage(){
+      const arr = loadPairs();
+      const text = arr.map(o => `${o.ee}, ${o.en.join(' / ')}`).join('\n');
+      document.getElementById('pairs').value = text;
+      updateStats();
+    }
+
+    function saveFromTextarea(replace){
+      const text = document.getElementById('pairs').value;
+      const parsed = parsePairs(text);
+      let base = replace ? [] : loadPairs();
+      // kui replace on true kirjutame üle
+      const merged = replace ? parsed : [...base, ...parsed];
+      // eemaldame duplikaadid eesti-sõna alusel
+      const byEe = new Map();
+      for(const item of merged){ byEe.set(item.ee, item) }
+      const final = Array.from(byEe.values());
+      savePairs(final);
+      loadTextareaFromStorage();
+      startQuiz();
+    }
+
+    // —— eksport / import ————————————————————————————————
+    function exportJSON(){
+      const data = JSON.stringify(loadPairs(), null, 2);
+      const blob = new Blob([data], {type: 'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'sonaoppe-pairs.json'; a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importJSON(file){
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const arr = JSON.parse(reader.result);
+          if(!Array.isArray(arr)) throw new Error('vale formaat');
+          savePairs(arr);
+          loadTextareaFromStorage();
+          startQuiz();
+        } catch(e){ alert('import ebaõnnestus: ' + e.message) }
+      };
+      reader.readAsText(file);
+    }
+
+    // —— sündmused ————————————————————————————————
+    document.getElementById('saveBtn').addEventListener('click', ()=> saveFromTextarea(true));
+    document.getElementById('appendBtn').addEventListener('click', ()=> saveFromTextarea(false));
+    document.getElementById('clearBtn').addEventListener('click', ()=>{
+      if(confirm('kas kustutame kõik sõnad')){
+        localStorage.removeItem(storageKey);
+        loadTextareaFromStorage();
+        startQuiz();
+      }
+    });
+
+    document.getElementById('checkBtn').addEventListener('click', checkAnswer);
+    document.getElementById('nextBtn').addEventListener('click', nextCard);
+    document.getElementById('speakBtn').addEventListener('click', ()=>{
+      const card = deck[ order[idx] ];
+      if(card) speak(card.en[0]);
+    });
+
+    document.getElementById('shuffleBtn').addEventListener('click', ()=>{
+      shuffle(order); idx = -1; nextCard();
+    });
+    document.getElementById('resetBtn').addEventListener('click', ()=>{ correct=0; total=0; updateScore(); idx=-1; nextCard() });
+
+    document.getElementById('answer').addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter' && !e.ctrlKey){ e.preventDefault(); checkAnswer() }
+      else if(e.key === 'Enter' && e.ctrlKey){ e.preventDefault(); nextCard() }
+    });
+
+    document.getElementById('exportBtn').addEventListener('click', exportJSON);
+    document.getElementById('importFile').addEventListener('change', (e)=>{
+      const f = e.target.files[0]; if(f) importJSON(f);
+      e.target.value = '';
+    });
+
+    // — init —
+    loadTextareaFromStorage();
+    startQuiz();
+  </script>
+</body>
+</html>
